@@ -20,6 +20,15 @@ function getOrCreate(store, id, def) {
 }
 const ts = () => Date.now();
 
+function toBool(v, fallback = false) {
+    if (v === undefined || v === null || v === "") return fallback;
+    if (typeof v === "boolean") return v;
+    const s = String(v).trim().toLowerCase();
+    if (s === "true" || s === "1" || s === "yes" || s === "on") return true;
+    if (s === "false" || s === "0" || s === "no" || s === "off") return false;
+    return fallback;
+}
+
 // ─── CORS ────────────────────────────────────────────────────────────
 app.use((req, res, next) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
@@ -32,6 +41,55 @@ app.use((req, res, next) => {
 // ─── Health ──────────────────────────────────────────────────────────
 app.get("/", (req, res) => res.json({ ok: true, service: "AVCB API" }));
 
+// ─── Voice state ──────────────────────────────────────────────────────
+// The API is the middleman for voice: `muted` means the client should not
+// receive voice audio. It lives here so it survives a rejoin and can be
+// flipped from the outside (staff panel, curl, the other clients).
+function voiceState(id) {
+    const u = users[id];
+    return {
+        muted: !!u && u.muted === true,
+        voiceEnabled: !u || u.voiceEnabled !== false,
+        by: (u && u.voiceBy) || "",
+        ts: (u && u.voiceTs) || 0,
+    };
+}
+
+function applyVoiceState(id, params) {
+    if (!id) return null;
+    const u = getOrCreate(users, id, () => ({
+        username: (params && params.username) || id, disguise: false,
+        hidetag: false, admin: false, owner: false,
+    }));
+    if (params && params.username) u.username = String(params.username);
+
+    if (params && params.muted !== undefined) u.muted = toBool(params.muted, false);
+    if (params && params.voiceEnabled !== undefined) u.voiceEnabled = toBool(params.voiceEnabled, true);
+    if (params && params.by) u.voiceBy = String(params.by);
+    u.voiceTs = ts();
+    u.lastSeen = ts();
+    return voiceState(id);
+}
+
+// ─── GET|POST /api/voice  &  GET /api/voice/:userId ───────────────────
+app.get("/api/voice", (req, res) => {
+    const { userId, muted, voiceEnabled, by, username } = req.query;
+    if (!userId) return res.status(400).json({ error: "missing userId" });
+    if (muted !== undefined || voiceEnabled !== undefined) {
+        return res.json({ ok: true, ...applyVoiceState(userId, { muted, voiceEnabled, by, username }) });
+    }
+    getOrCreate(users, userId, () => ({ username: username || userId }));
+    res.json({ ok: true, ...voiceState(userId) });
+});
+app.post("/api/voice", (req, res) => {
+    const { userId, muted, voiceEnabled, by, username } = req.body || {};
+    if (!userId) return res.status(400).json({ error: "missing userId" });
+    res.json({ ok: true, ...applyVoiceState(userId, { muted, voiceEnabled, by, username }) });
+});
+app.get("/api/voice/:userId", (req, res) => {
+    res.json({ ok: true, ...voiceState(req.params.userId) });
+});
+
 // ─── GET /api/heartbeat ──────────────────────────────────────────────
 app.get("/api/heartbeat", (req, res) => {
     const { userId, username } = req.query;
@@ -42,11 +100,14 @@ app.get("/api/heartbeat", (req, res) => {
         }));
         if (username) u.username = username;
         u.lastSeen = ts();
-        for (const k of ["gameId","placeId","muted","voiceEnabled"]) {
+        for (const k of ["gameId","placeId"]) {
             if (req.query[k] !== undefined) u[k] = req.query[k];
         }
+        // voice flags are real booleans on the server, heartbeat just reports them
+        if (req.query.muted !== undefined) u.muted = toBool(req.query.muted, false);
+        if (req.query.voiceEnabled !== undefined) u.voiceEnabled = toBool(req.query.voiceEnabled, true);
     }
-    res.json({ ok: true });
+    res.json({ ok: true, ...(userId ? voiceState(userId) : {}) });
 });
 
 // ─── GET /api/admins ─────────────────────────────────────────────────
@@ -65,7 +126,7 @@ app.get("/api/users", (req, res) => {
     const now = ts();
     const list = Object.entries(users)
         .filter(([, u]) => u.lastSeen && now - u.lastSeen < 300000)
-        .map(([id, u]) => ({ id, username: u.username, disguise: u.disguise, hidetag: u.hidetag, admin: u.admin, owner: u.owner }));
+        .map(([id, u]) => ({ id, username: u.username, disguise: u.disguise, hidetag: u.hidetag, admin: u.admin, owner: u.owner, muted: u.muted === true, voiceEnabled: u.voiceEnabled !== false }));
     res.json({ users: list });
 });
 
@@ -80,10 +141,20 @@ app.get("/api/commands/:userId", (req, res) => {
 function handleCommand(params, res) {
     const { targetUserId, fromUsername, fromRole, op } = params;
     if (!targetUserId) return res.status(400).json({ error: "missing targetUserId" });
+    const name = String(op || params.action || "custom");
     getOrCreate(commands, targetUserId, () => []).push({
-        op: op || "custom", from: fromUsername || "staff",
+        op: name,
+        // clients dispatch on `action`, keep both so op=voice_mute also lands
+        action: String(params.action || name).toLowerCase(),
+        from: fromUsername || "staff",
         role: fromRole || "admin", params, ts: ts(),
     });
+    if (name === "voice_mute" || name === "voice_unmute") {
+        applyVoiceState(targetUserId, {
+            muted: name === "voice_mute" ? true : false,
+            by: fromUsername || "staff",
+        });
+    }
     res.json({ ok: true });
 }
 app.get("/api/command",  (req, res) => handleCommand(req.query, res));

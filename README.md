@@ -39,3 +39,19 @@ local API_BASE = _G.SCHWEIN_AVCB_API or "https://avcb-1o3g.onrender.com"
 | GET | /api/inbox/:userId | Fetch inbox message |
 | GET\|POST | /api/chat | Chat system |
 | GET | /api/chat/:userId | Fetch chat for user |
+| GET\|POST | /api/voice | Voice mute flag (ตัวกลาง) |
+| GET | /api/voice/:userId | อ่านสถานะ voice ของ user |
+
+## Voice mute (ปุ่มบน client)
+
+`muted` = **ไม่รับเสียง** ไม่ได้แตะไมโครโฟน
+
+อ่าน/เขียนได้เลย:
+```bash
+curl "https://<api>/api/voice?userId=12345&muted=true&by=staff"   # ปิดเสียง
+curl "https://<api>/api/voice?userId=12345"                       # {"ok":true,"muted":true,...}
+```
+client จะ poll ทุก ~4 วินาที และ mute เฉพาะ `Player.Muted` ของคนอื่น
+(ตัวเองยังพูดออกไปได้ปกติ) ถ้าอยากสั่งจาก command system ใช้
+`/api/command?targetUserId=:uid&op=voice_mute` (หรือ `voice_unmute`) ซึ่งจะ
+อัปเดต flag ที่ API ทันทีและส่งคำสั่งไปหา client ด้วย
