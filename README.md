@@ -21,7 +21,7 @@ _G.SCHWEIN_AVCB_API = "https://your-url.onrender.com"
 
 หรือ แก้ไนในบรรทัด:
 ```lua
-local API_BASE = _G.SCHWEIN_AVCB_API or "https://avcb-1o3g.onrender.com"
+local API_BASE = _G.SCHWEIN_AVCB_API or "https://api-test-np1w.onrender.com"
 ```
 เปลี่ยน default URL เป็น URL ของตัวเอง
 
