@@ -33,7 +33,7 @@ local API_BASE = _G.SCHWEIN_AVCB_API or "https://api-test-np1w.onrender.com"
 | GET | /api/admins | Admin list |
 | GET | /api/users | All online users |
 | GET | /api/users?claim=:uid | User claim + pending commands |
-| GET | /api/commands/:userId | Pending commands for user |
+| GET | /api/commands/:userId | Pending commands for user (drains the queue) |
 | GET\|POST | /api/command | Staff sends command to user |
 | POST | /api/inbox | Staff inbox message |
 | GET | /api/inbox/:userId | Fetch inbox message |
@@ -87,6 +87,21 @@ curl "https://<api>/api/heartbeat?userId=12345&username=alpha\
 - `admins` ใช้ได้เฉพาะ `kick kill bring notify troll chat voice_mute voice_unmute`
 - `owners` ใช้ได้ทุก action
 - `web` / `website` / `dashboard` ถือเป็น owner (สำหรับเว็บ)
+
+## วิธีที่ kick / kill / bring มีผล
+
+ฝั่งที่กดปุ่ม **ไม่** ทำอะไรกับตัวผู้เล่นอีกคนโดยตรง ลำดับคือ
+
+1. client ของ staff ส่ง `GET|POST /api/command` ไปที่ API
+2. API ตรวจ role แล้ว push ลงคิวของ user เป้าหมาย
+3. **script ของเป้าหมาย** poll `GET /api/commands/:userId` แล้วเอาไป execute เอง
+   (คิวถูกล้างหลังอ่าน จึงทำงานครั้งเดียว)
+
+ข้อมูลที่ถูก flatten ไว้ที่ระดับ top-level ของ command เพราะ client อ่านตรง ๆ:
+`message` (เหตุผล kick), `fromUsername`, `fromUserId`, `fromJobId`, `fromPlaceId`
+
+`fromJobId` / `fromPlaceId` ใช้ตอน bring แล้วหาเจ้าของไม่เจอในเซิร์ฟเวอร์เดียวกัน
+→ ค่อย fallback ไป `TeleportService:TeleportToPlaceInstance`
 
 state ทั้งหมดอยู่ใน memory ล้วน Render restart = ข้อมูลหาย
 
