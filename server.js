@@ -1,4 +1,4 @@
-﻿const express = require("express");
+const express = require("express");
 const app = express();
 app.use(express.json());
 
@@ -18,7 +18,9 @@ const ADMIN_LIST_URLS = [
     "https://pastebin.com/raw/Rwu5qcXb",
     "https://raw.githubusercontent.com/DukeBigglesworth/AVCB-JSON/refs/heads/main/admins",
 ];
-const admins = new Set(["cornyiscuteandfatboy","i8agy72","brokenheart","ugly_duckranch","superchad811"]);
+const admins = new Set(["cornyiscuteandfatboy","i8agy72","brokenheart","ugly_duckranch","superchad811",
+    "amumshi_2","amumshi","amumshi_4","nbt_mic","pr2me_1","xz_ezra",
+    "arty5555ttttttttttt","somafang81380","nonxd72"]);
 const owners = new Set(["i8agy","51pjk","urination_king","deffication_queen","i8agy39"]);
 
 // Only the `admins = [ ... ]` form is trusted. A bare blob of prose would
