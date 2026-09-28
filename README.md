@@ -37,8 +37,6 @@ local API_BASE = _G.SCHWEIN_AVCB_API or "https://api-test-np1w.onrender.com"
 | GET\|POST | /api/command | Staff sends command to user |
 | POST | /api/inbox | Staff inbox message |
 | GET | /api/inbox/:userId | Fetch inbox message |
-| GET\|POST | /api/chat | Chat system |
-| GET | /api/chat/:userId | Fetch chat for user |
 | GET\|POST | /api/voice | Voice mute flag (ตัวกลาง) |
 | GET | /api/voice/:userId | อ่านสถานะ voice ของ user |
 
@@ -84,7 +82,7 @@ curl "https://<api>/api/heartbeat?userId=12345&username=alpha\
 ต้องส่ง `fromUserId` มาด้วย และชื่อต้องตรงกับ heartbeat ของ id นั้น
 
 - id ไม่มี heartbeat / ชื่อไม่ตรง → `403 not staff`
-- `admins` ใช้ได้เฉพาะ `kick kill bring notify troll chat voice_mute voice_unmute`
+- `admins` ใช้ได้เฉพาะ `kick kill bring notify troll voice_mute voice_unmute`
 - `owners` ใช้ได้ทุก action
 - `web` / `website` / `dashboard` ถือเป็น owner (สำหรับเว็บ)
 

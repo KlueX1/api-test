@@ -8,7 +8,6 @@ const PORT = process.env.PORT || 3000;
 const users    = {};   // users[userId] = { username, disguise, hidetag, admin, owner, lastSeen, ... }
 const commands = {};   // commands[userId] = [{ op, from, role, params, ts }]
 const inbox    = {};   // inbox[userId] = { ...payload, ts }
-const chat     = {};   // chat[userId]  = [{ msg|event, from, role, ts }]
 
 // The two list sources do not agree: the pastebin carries 9 names, the GitHub
 // raw file carries 5. The client unions both, so hardcoding only one of them
@@ -227,11 +226,11 @@ app.get("/api/commands/:userId", (req, res) => {
 // fromUsername=i8agy in the query string
 const WEB_SENDERS = new Set(["web", "website", "dashboard"]);
 const OWNER_ACTIONS = new Set([
-    "kick","kill","bring","notify","troll","chat","custom","shutdown",
+    "kick","kill","bring","notify","troll","custom","shutdown",
     "voice_mute","voice_unmute",
 ]);
 const ADMIN_ACTIONS = new Set([
-    "kick","kill","bring","notify","troll","chat","voice_mute","voice_unmute",
+    "kick","kill","bring","notify","troll","voice_mute","voice_unmute",
 ]);
 
 function senderRole(params) {
@@ -315,30 +314,6 @@ app.get("/api/inbox/:userId", (req, res) => {
     if (!item) return res.json({ ok: false });
     delete inbox[req.params.userId];
     res.json({ ok: true, ...item });
-});
-
-// ─── GET|POST /api/chat  &  GET /api/chat/:userId ───────────────────
-function handleChat(params, res) {
-    const { op, userId, targetUserId, msg, from, role } = params;
-    const tid = targetUserId || userId;
-
-    if (op === "reset" || op === "staff_close") {
-        if (tid) chat[tid] = [];
-        return res.json({ ok: true });
-    }
-    if (op === "event") {
-        if (tid) getOrCreate(chat, tid, () => []).push({ event: params.kind || "event", ts: ts() });
-        return res.json({ ok: true });
-    }
-    if (tid && msg) {
-        getOrCreate(chat, tid, () => []).push({ msg, from, role, ts: ts() });
-    }
-    res.json({ ok: true });
-}
-app.get("/api/chat",  (req, res) => handleChat(req.query, res));
-app.post("/api/chat", (req, res) => handleChat({ ...req.query, ...req.body }, res));
-app.get("/api/chat/:userId", (req, res) => {
-    res.json({ ok: true, chat: chat[req.params.userId] || [] });
 });
 
 // ─── Start ───────────────────────────────────────────────────────────
