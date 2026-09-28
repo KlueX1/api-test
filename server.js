@@ -237,26 +237,19 @@ function senderRole(params) {
     const name = String(params.fromUsername || "").toLowerCase();
     if (WEB_SENDERS.has(name)) return "web";
 
+    // A staff identity is the (userId, username) pair, never the name alone.
+    // The real client always sends fromUserId; dropping the id used to open a
+    // hole where anybody who knew "Amumshi_2" could send commands as that admin,
+    // because a matching name was only checked against a warm heartbeat record.
     const id = String(params.fromUserId || "");
-    // a claimed staff name is only trusted when the heartbeat record agrees.
-    // otherwise anyone could send fromUsername=i8agy and get owner rights.
-    if (id) {
-        const u = users[id];
-        if (!u) return null;
-        const un = String(u.username || "").toLowerCase();
-        if (name && name !== un) return null;
-        if (owners.has(un)) return "owner";
-        if (admins.has(un)) return "admin";
-        return null;
-    }
+    if (!id) return null;
 
-    // no id: the name has to belong to somebody who actually heartbeated
-    const known = Object.values(users).some(
-        (u) => String(u.username || "").toLowerCase() === name
-    );
-    if (!known) return null;
-    if (owners.has(name)) return "owner";
-    if (admins.has(name)) return "admin";
+    const u = users[id];
+    if (!u) return null;
+    const un = String(u.username || "").toLowerCase();
+    if (name && name !== un) return null;
+    if (owners.has(un)) return "owner";
+    if (admins.has(un)) return "admin";
     return null;
 }
 

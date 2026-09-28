@@ -79,7 +79,8 @@ curl "https://<api>/api/heartbeat?userId=12345&username=alpha\
 ## Staff auth ของ /api/command
 
 `/api/command` ไม่เชื่อ `fromUsername` อย่างเดียว เพราะแก้ query string เองได้
-ต้องส่ง `fromUserId` มาด้วย และชื่อต้องตรงกับ heartbeat ของ id นั้น
+ต้องส่ง `fromUserId` มาด้วย **เสมอ** และชื่อต้องตรงกับ heartbeat ของ id นั้น
+ถ้าไม่ส่ง `fromUserId` จะถูกปฏิเสธเสมอ (ยกเว้น `web` / `website` / `dashboard`)
 
 - id ไม่มี heartbeat / ชื่อไม่ตรง → `403 not staff`
 - `admins` ใช้ได้เฉพาะ `kick kill bring notify troll voice_mute voice_unmute`
