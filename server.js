@@ -10,8 +10,46 @@ const commands = {};   // commands[userId] = [{ op, from, role, params, ts }]
 const inbox    = {};   // inbox[userId] = { ...payload, ts }
 const chat     = {};   // chat[userId]  = [{ msg|event, from, role, ts }]
 
+// The two list sources do not agree: the pastebin carries 9 names, the GitHub
+// raw file carries 5. The client unions both, so hardcoding only one of them
+// made senderRole() return null for admins the client happily promoted, and
+// every /api/command from them 403'd. Keep the baked-in names as the offline
+// floor, then merge in both live lists.
+const ADMIN_LIST_URLS = [
+    "https://pastebin.com/raw/Rwu5qcXb",
+    "https://raw.githubusercontent.com/DukeBigglesworth/AVCB-JSON/refs/heads/main/admins",
+];
 const admins = new Set(["cornyiscuteandfatboy","i8agy72","brokenheart","ugly_duckranch","superchad811"]);
 const owners = new Set(["i8agy","51pjk","urination_king","deffication_queen","i8agy39"]);
+
+// Only the `admins = [ ... ]` form is trusted. A bare blob of prose would
+// otherwise get shredded into single-word "admins" by the splitter below.
+const ADMIN_NAME_RE = /^[a-z0-9_]{2,32}$/;
+function parseAdminList(text) {
+    const out = new Set();
+    if (typeof text !== "string") return out;
+    const m = text.match(/admins\s*=\s*\[([\s\S]*?)\]/i);
+    if (!m) return out;
+    for (const raw of m[1].split(/[\s,;]+/)) {
+        const name = raw.trim().replace(/^["']|["']$/g, "").toLowerCase();
+        if (ADMIN_NAME_RE.test(name)) out.add(name);
+    }
+    return out;
+}
+
+async function refreshAdminList() {
+    for (const url of ADMIN_LIST_URLS) {
+        try {
+            const res = await fetch(url, { headers: { "User-Agent": "avcb-api" } });
+            if (!res.ok) continue;
+            const found = parseAdminList(await res.text());
+            for (const n of found) admins.add(n);
+            if (found.size) console.log(`admin list merged from ${url}: +${found.size}`);
+        } catch (err) {
+            console.log(`admin list fetch failed for ${url}: ${err.message}`);
+        }
+    }
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 function getOrCreate(store, id, def) {
@@ -296,4 +334,11 @@ app.get("/api/chat/:userId", (req, res) => {
 });
 
 // ─── Start ───────────────────────────────────────────────────────────
-app.listen(PORT, () => console.log(`AVCB API running on port ${PORT}`));
+// load the live admin lists before the first request can be authenticated,
+// then keep them warm so a later edit to either source takes effect.
+const boot = async () => {
+    await refreshAdminList();
+    setInterval(refreshAdminList, 10 * 60 * 1000).unref?.();
+    app.listen(PORT, () => console.log(`AVCB API running on port ${PORT}`));
+};
+boot();
