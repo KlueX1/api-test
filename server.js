@@ -125,8 +125,8 @@ app.get("/api/users", (req, res) => {
     }
     const now = ts();
     const list = Object.entries(users)
-        .filter(([, u]) => u.lastSeen && now - u.lastSeen < 300000)
-        .map(([id, u]) => ({ id, username: u.username, disguise: u.disguise, hidetag: u.hidetag, admin: u.admin, owner: u.owner, muted: u.muted === true, voiceEnabled: u.voiceEnabled !== false }));
+        .filter(([, u]) => u.lastSeen && now - u.lastSeen < 900000)
+        .map(([id, u]) => ({ id, userId: id, username: u.username, disguise: u.disguise, hidetag: u.hidetag, admin: u.admin, owner: u.owner, muted: u.muted === true, voiceEnabled: u.voiceEnabled !== false }));
     res.json({ users: list });
 });
 
