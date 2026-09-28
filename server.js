@@ -281,7 +281,15 @@ function handleCommand(params, res) {
         // clients dispatch on `action`, keep both so op=voice_mute also lands
         action,
         from: fromUsername || "staff",
-        role: fromRole || role, params, ts: ts(),
+        role: fromRole || role,
+        // the clients read these at the top level, not out of `params`:
+        // the kick reason and the sender identity used by bring/notify.
+        message: String(params.message || ""),
+        fromUsername: fromUsername || "staff",
+        fromUserId: String(params.fromUserId || ""),
+        fromJobId: String(params.fromJobId || ""),
+        fromPlaceId: String(params.fromPlaceId || ""),
+        params, ts: ts(),
     });
     if (name === "voice_mute" || name === "voice_unmute") {
         applyVoiceState(targetUserId, {
